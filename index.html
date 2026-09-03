@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Проверка текста</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 20px;
+            background: #f0f2f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        h1 { 
+            margin-top: 0; 
+            color: #1a1a2e; 
+            font-weight: 500;
+        }
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 220px;
+            padding: 14px;
+            font-size: 17px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-family: inherit;
+            resize: vertical;
+        }
+        textarea:focus {
+            border-color: #4a6cf7;
+            outline: none;
+        }
+        .stats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 25px;
+            margin: 16px 0 20px;
+            padding: 12px 18px;
+            background: #f8f9fc;
+            border-radius: 10px;
+            font-size: 15px;
+        }
+        .stats b { color: #1a1a2e; font-size: 18px; }
+        .btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px 26px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary { background: #4a6cf7; color: white; }
+        .btn-primary:hover { background: #3a5cd9; }
+        .btn-secondary { background: #e8eaed; color: #333; }
+        .btn-secondary:hover { background: #d5d8dd; }
+        .btn-success { background: #34a853; color: white; }
+        .btn-success:hover { background: #2d9248; }
+        .btn-warning { background: #f9ab00; color: white; }
+        .btn-warning:hover { background: #e09a00; }
+        .btn-danger { background: #e74c3c; color: white; }
+        .btn-danger:hover { background: #c0392b; }
+        #result {
+            margin-top: 20px;
+            padding: 20px;
+            background: #fafbfc;
+            border-radius: 10px;
+            border: 2px solid #e8eaed;
+            min-height: 100px;
+            line-height: 2.2;
+            font-size: 17px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .error-word {
+            background: #fee;
+            border-bottom: 3px wavy #e74c3c;
+            padding: 2px 4px;
+            border-radius: 3px;
+            cursor: help;
+        }
+        .yo-highlight {
+            background: #fff3cd;
+            color: #6c4a00;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+            border-bottom: 2px solid #f39c12;
+        }
+        .loading { color: #666; font-style: italic; }
+        .badge {
+            display: inline-block;
+            padding: 2px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            background: #e8eaed;
+            color: #555;
+        }
+        .badge-yo { background: #ffeaa7; color: #6c4a00; }
+        @media (max-width: 600px) {
+            .container { padding: 15px; }
+            .stats { flex-wrap: wrap; gap: 10px; }
+            .btn-group button { flex: 1; min-width: 100px; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>📝 Проверка текста</h1>
+    <div class="subtitle">Исправляет опечатки, пунктуацию, пробелы и возвращает букву Ё</div>
+    
+    <div style="margin-bottom: 12px;">
+        <span class="badge">🌐 Яндекс.Спеллер</span>
+        <span class="badge badge-yo">🔤 Авто-Ё</span>
+        <span class="badge">✅ Всё в одном месте</span>
+    </div>
+
+    <textarea id="inputText" placeholder="Введите текст...">Мама мылараму. она была чисткая и умная. Все знают: елка, ежик, слезы, небо. Я поеду в лес.</textarea>
+
+    <div class="stats">
+        <span>📊 Символов: <b id="charCount">0</b></span>
+        <span>📝 Слов: <b id="wordCount">0</b></span>
+        <span>⚠️ Ошибок: <b id="errorCount">0</b></span>
+        <span>🔤 Ё-вставок: <b id="yoCount">0</b></span>
+    </div>
+
+    <div class="btn-group">
+        <button class="btn-primary" onclick="fullCheck()">🔍 Проверить</button>
+        <button class="btn-warning" onclick="applyYoficator()">🔤 Вернуть Ё</button>
+        <button class="btn-success" onclick="fixAll()">⚡ Исправить всё</button>
+        <button class="btn-secondary" onclick="clearAll()">🧹 Очистить</button>
+        <button class="btn-success" onclick="copyResult()">📋 Копировать</button>
+    </div>
+
+    <div id="result">Нажмите «Проверить» для анализа текста</div>
+</div>
+
+<script>
+    // =============================================
+    //  СЛОВАРЬ ДЛЯ ВОЗВРАТА БУКВЫ Ё
+    //  👇 СЮДА ВСТАВЛЯЙТЕ СВОИ СЛОВА
+    // =============================================
+    const yoDictionary = {
+        // ---- СУЩЕСТВИТЕЛЬНЫЕ ----
+        'елка': 'ёлка',
+        'ежик': 'ёжик',
+        'береза': 'берёза',
+        'слезы': 'слёзы',
+        'небо': 'нёбо',
+        'пес': 'пёс',
+        'мед': 'мёд',
+        'лед': 'лёд',
+        'осел': 'осёл',
+        'козел': 'козёл',
+        'щегол': 'щёгол',
+        'телок': 'телёк',
+        'жернов': 'жёрнов',
+        'перст': 'пёрст',
+        
+        // ---- ГЛАГОЛЫ ----
+        'поет': 'поёт',
+        'пьет': 'пьёт',
+        'идет': 'идёт',
+        'везет': 'везёт',
+        'несет': 'несёт',
+        'ползет': 'ползёт',
+        'живет': 'живёт',
+        'плывет': 'плывёт',
+        'зовет': 'зовёт',
+        'клюет': 'клюёт',
+        'жует': 'жуёт',
+        'плюет': 'плюёт',
+        'смеется': 'смеётся',
+        
+        // ---- ПРИЛАГАТЕЛЬНЫЕ ----
+        'веселый': 'весёлый',
+        'темный': 'тёмный',
+        'дешевый': 'дешёвый',
+        'желтый': 'жёлтый',
+        'черный': 'чёрный',
+        'зеленый': 'зелёный',
+        'теплый': 'тёплый',
+        'легкий': 'лёгкий',
+        'тяжелый': 'тяжёлый',
+        
+        // ---- ПРИЧАСТИЯ ----
+        'сожженный': 'сожжённый',
+        'зажженный': 'зажжённый',
+        'решенный': 'решённый',
+        'испеченный': 'испечённый',
+        
+        // ---- НАРЕЧИЯ И ДРУГИЕ ----
+        'еще': 'ещё',
+        'все': 'всё',
+        
+        // ---- ДОБАВЛЯЙТЕ СВОИ СЛОВА СЮДА ----
+        // 'слово': 'слёво',
+    };
+
+    // =============================================
+    //  ОСНОВНЫЕ ФУНКЦИИ (НЕ ТРОГАТЬ)
+    // =============================================
+
+    let currentErrors = [];
+
+    function applyYoficator() {
+        const input = document.getElementById('inputText');
+        let text = input.value;
+        let yoCount = 0;
+        
+        const words = text.split(/(\s+|[.,!?;:()"'-])/);
+        let result = [];
+        
+        for (let word of words) {
+            if (/^[а-яА-ЯёЁ]+$/.test(word)) {
+                const lowerWord = word.toLowerCase();
+                if (yoDictionary[lowerWord]) {
+                    const newWord = yoDictionary[lowerWord];
+                    if (word[0] === word[0].toUpperCase()) {
+                        result.push(newWord[0].toUpperCase() + newWord.slice(1));
+                    } else {
+                        result.push(newWord);
+                    }
+                    yoCount++;
+                } else {
+                    result.push(word);
+                }
+            } else {
+                result.push(word);
+            }
+        }
+        
+        input.value = result.join('');
+        document.getElementById('yoCount').textContent = yoCount;
+        fullCheck();
+    }
+
+    async function checkSpelling(text) {
+        try {
+            const response = await fetch('https://speller.yandex.net/services/spellservice.json/checkText', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `text=${encodeURIComponent(text)}&lang=ru&options=4`
+            });
+            return await response.json();
+        } catch (e) {
+            console.error('Ошибка проверки:', e);
+            return [];
+        }
+    }
+
+    async function fullCheck() {
+        const input = document.getElementById('inputText');
+        const text = input.value;
+        
+        if (!text.trim()) {
+            document.getElementById('result').innerHTML = 'Введите текст для проверки';
+            resetStats();
+            return;
+        }
+
+        const resultDiv = document.getElementById('result');
+        resultDiv.innerHTML = '<span class="loading">⏳ Проверяем...</span>';
+
+        const errors = await checkSpelling(text);
+        currentErrors = errors;
+
+        let result = text;
+        let errorCount = 0;
+        
+        const sortedErrors = errors.sort((a, b) => b.pos - a.pos);
+        
+        sortedErrors.forEach(err => {
+            errorCount++;
+            const before = result.substring(0, err.pos);
+            const wrong = result.substring(err.pos, err.pos + err.len);
+            const after = result.substring(err.pos + err.len);
+            
+            const suggestions = err.s.length ? err.s.join(', ') : 'нет вариантов';
+            const hint = `<span class="error-word" title="Варианты: ${suggestions}">${wrong}</span>`;
+            
+            result = before + hint + after;
+        });
+
+        result = result.replace(/ё/gi, match => `<span class="yo-highlight">${match}</span>`);
+        
+        resultDiv.innerHTML = result;
+
+        const words = text.match(/[а-яё]+/gi) || [];
+        const yoCount = (text.match(/ё/gi) || []).length;
+        
+        document.getElementById('charCount').textContent = text.replace(/\s/g, '').length;
+        document.getElementById('wordCount').textContent = words.length;
+        document.getElementById('errorCount').textContent = errorCount;
+        document.getElementById('yoCount').textContent = yoCount;
+    }
+
+    function fixAll() {
+        const input = document.getElementById('inputText');
+        let text = input.value;
+        
+        // Сначала Ё
+        let yoCount = 0;
+        const words = text.split(/(\s+|[.,!?;:()"'-])/);
+        let result = [];
+        
+        for (let word of words) {
+            if (/^[а-яА-ЯёЁ]+$/.test(word)) {
+                const lowerWord = word.toLowerCase();
+                if (yoDictionary[lowerWord]) {
+                    const newWord = yoDictionary[lowerWord];
+                    if (word[0] === word[0].toUpperCase()) {
+                        result.push(newWord[0].toUpperCase() + newWord.slice(1));
+                    } else {
+                        result.push(newWord);
+                    }
+                    yoCount++;
+                } else {
+                    result.push(word);
+                }
+            } else {
+                result.push(word);
+            }
+        }
+        
+        text = result.join('');
+        document.getElementById('yoCount').textContent = yoCount;
+        
+        document.getElementById('result').innerHTML = '<span class="loading">⏳ Исправляем ошибки...</span>';
+        
+        checkSpelling(text).then(errors => {
+            let fixedText = text;
+            const sortedErrors = errors.sort((a, b) => b.pos - a.pos);
+            
+            sortedErrors.forEach(err => {
+                if (err.s && err.s.length > 0) {
+                    const suggestion = err.s[0];
+                    const before = fixedText.substring(0, err.pos);
+                    const after = fixedText.substring(err.pos + err.len);
+                    fixedText = before + suggestion + after;
+                }
+            });
+            
+            input.value = fixedText;
+            fullCheck();
+        });
+    }
+
+    function clearAll() {
+        document.getElementById('inputText').value = '';
+        document.getElementById('result').innerHTML = 'Текст очищен';
+        resetStats();
+    }
+
+    function resetStats() {
+        document.getElementById('charCount').textContent = '0';
+        document.getElementById('wordCount').textContent = '0';
+        document.getElementById('errorCount').textContent = '0';
+        document.getElementById('yoCount').textContent = '0';
+    }
+
+    function copyResult() {
+        const text = document.getElementById('result').innerText;
+        if (text && text !== 'Текст очищен' && !text.includes('Введите текст')) {
+            navigator.clipboard.writeText(text).then(() => alert('✅ Скопировано!'));
+        } else {
+            alert('Нет текста для копирования');
+        }
+    }
+
+    document.getElementById('inputText').addEventListener('input', () => {
+        clearTimeout(window._timer);
+        window._timer = setTimeout(fullCheck, 600);
+    });
+
+    window.onload = fullCheck;
+</script>
+</body>
+</html>
